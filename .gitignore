@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+env/
+
+# Segredos e banco de dados
+.env
+*.db
+instance/
+
+# Editor
+.vscode/
