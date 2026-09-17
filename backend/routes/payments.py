@@ -87,6 +87,7 @@ def criar_pagamento(order_id):
 @payments_bp.route('/webhook', methods=['POST'])
 def webhook():
     dados = request.get_json(silent=True) or {}
+    print('WEBHOOK RECEBIDO:', dados)
 
     # o Mercado Pago avisa que algo mudou, mas a gente não confia no conteúdo:
     # vai perguntar pra API qual é o status real
@@ -112,6 +113,7 @@ def webhook():
     info = consulta.json()
     status_mp = info.get('status')
     order_id = info.get('external_reference')
+    print('STATUS NO MP:', status_mp, '| PEDIDO:', order_id)
 
     if not order_id:
         return jsonify({'ok': True}), 200
@@ -133,3 +135,48 @@ def webhook():
 
     db.session.commit()
     return jsonify({'ok': True}), 200
+
+## Rota de consulta para Webhook:
+
+@payments_bp.route('/consultar/<int:order_id>', methods=['POST'])
+@jwt_required()
+def consultar_pagamento(order_id):
+    user_id = int(get_jwt_identity())
+    order = Order.query.get_or_404(order_id)
+
+    if order.user_id != user_id:
+        return jsonify({'error': 'Acesso negado'}), 403
+
+    pagamento = Payment.query.filter_by(order_id=order.id).first()
+    if not pagamento or not pagamento.mp_order_id:
+        return jsonify({'error': 'Nenhuma cobrança criada para este pedido'}), 404
+
+    try:
+        consulta = requests.get(
+            f'{MP_API}/{pagamento.mp_order_id}',
+            headers={'Authorization': f"Bearer {os.getenv('MP_ACCESS_TOKEN')}"},
+            timeout=15
+        )
+    except requests.RequestException:
+        return jsonify({'error': 'Não foi possível contatar o Mercado Pago'}), 503
+
+    if consulta.status_code != 200:
+        return jsonify({'error': 'Erro ao consultar', 'detalhe': consulta.json()}), 502
+
+    info = consulta.json()
+    status_mp = info.get('status')
+    print('CONSULTA MANUAL - STATUS NO MP:', status_mp)
+
+    if status_mp == 'processed':
+        order.status = 'pago'
+        pagamento.status = 'aprovado'
+    elif status_mp in ('cancelled', 'expired'):
+        order.status = 'cancelado'
+        pagamento.status = 'cancelado'
+
+    db.session.commit()
+
+    return jsonify({
+        'status_pedido': order.status,
+        'status_mercadopago': status_mp
+    }), 200
