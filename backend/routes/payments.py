@@ -1,6 +1,9 @@
 import os
 import uuid
 import requests
+import hmac
+import hashlib
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Order, Payment
@@ -16,6 +19,53 @@ def mp_headers():
         'Content-Type': 'application/json',
         'X-Idempotency-Key': str(uuid.uuid4())
     }
+
+def assinatura_valida():
+    """Confere se a notificação veio mesmo do Mercado Pago."""
+    segredo = os.getenv('MP_WEBHOOK_SECRET')
+
+    # sem segredo configurado, não dá pra validar
+    if not segredo:
+        print('AVISO: MP_WEBHOOK_SECRET não configurado, validação pulada')
+        return True
+
+    x_signature = request.headers.get('x-signature')
+    x_request_id = request.headers.get('x-request-id')
+    data_id = request.args.get('data.id')
+
+    if not x_signature:
+        return False
+
+    ts = None
+    hash_recebido = None
+    for parte in x_signature.split(','):
+        if '=' not in parte:
+            continue
+        chave, valor = parte.split('=', 1)
+        chave = chave.strip()
+        if chave == 'ts':
+            ts = valor.strip()
+        elif chave == 'v1':
+            hash_recebido = valor.strip()
+
+    if not ts or not hash_recebido:
+        return False
+
+    # monta o texto exatamente no formato que o Mercado Pago espera
+    manifesto = ''
+    if data_id:
+        manifesto += f'id:{data_id.lower()};'
+    if x_request_id:
+        manifesto += f'request-id:{x_request_id};'
+    manifesto += f'ts:{ts};'
+
+    hash_calculado = hmac.new(
+        segredo.encode('utf-8'),
+        manifesto.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(hash_calculado, hash_recebido)
 
 
 @payments_bp.route('/criar/<int:order_id>', methods=['POST'])
@@ -86,13 +136,17 @@ def criar_pagamento(order_id):
 
 @payments_bp.route('/webhook', methods=['POST'])
 def webhook():
+    if not assinatura_valida():
+        print('WEBHOOK REJEITADO: assinatura inválida')
+        return jsonify({'error': 'assinatura inválida'}), 401
+
     dados = request.get_json(silent=True) or {}
     print('WEBHOOK RECEBIDO:', dados)
 
-    # o Mercado Pago avisa que algo mudou, mas a gente não confia no conteúdo:
+    # o Mercado Pago avisa que algo mudou, mas não confia no conteúdo:
     # vai perguntar pra API qual é o status real
-    mp_order_id = None
-    if dados.get('data'):
+    mp_order_id = request.args.get('data.id')
+    if not mp_order_id and dados.get('data'):
         mp_order_id = dados['data'].get('id')
 
     if not mp_order_id:
