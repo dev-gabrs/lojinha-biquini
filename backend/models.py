@@ -104,3 +104,70 @@ class CartItem(db.Model):
             'unit_price': self.unit_price(),
             'subtotal': self.subtotal()
         }
+
+class Order(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    status = db.Column(db.String(30), nullable=False, default='pendente')
+    total = db.Column(db.Numeric(10, 2), nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan')
+    user = db.relationship('User')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'status': self.status,
+            'total': float(self.total),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'items': [i.to_dict() for i in self.items]
+        }
+
+
+class OrderItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
+    variation_id = db.Column(db.Integer, db.ForeignKey('product_variation.id'))
+
+    # dados congelados no momento da compra
+    product_name = db.Column(db.String(150), nullable=False)
+    size = db.Column(db.String(20))
+    color = db.Column(db.String(40))
+    unit_price = db.Column(db.Numeric(10, 2), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+
+    def subtotal(self):
+        return round(float(self.unit_price) * self.quantity, 2)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'product_name': self.product_name,
+            'size': self.size,
+            'color': self.color,
+            'unit_price': float(self.unit_price),
+            'quantity': self.quantity,
+            'subtotal': self.subtotal()
+        }
+
+#Modelo de pagamento
+
+class Payment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    mp_order_id = db.Column(db.String(80))       # id da cobrança no Mercado Pago
+    checkout_url = db.Column(db.String(500))     # link pro cliente pagar
+    status = db.Column(db.String(30), default='pendente')
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    order = db.relationship('Order', backref='payment')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'order_id': self.order_id,
+            'status': self.status,
+            'checkout_url': self.checkout_url
+        }
