@@ -171,3 +171,32 @@ class Payment(db.Model):
             'status': self.status,
             'checkout_url': self.checkout_url
         }
+
+# Modelo de endereços
+
+class Address(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    apelido = db.Column(db.String(40))          # ex: 'Casa', 'Trabalho'
+    rua = db.Column(db.String(150), nullable=False)
+    numero = db.Column(db.String(20), nullable=False)
+    complemento = db.Column(db.String(100))
+    bairro = db.Column(db.String(100), nullable=False)
+    cidade = db.Column(db.String(100), default='Passo Fundo')
+    cep = db.Column(db.String(10))
+    referencia = db.Column(db.String(200))      # ex: 'prédio azul, interfone 2'
+    principal = db.Column(db.Boolean, default=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'apelido': self.apelido,
+            'rua': self.rua,
+            'numero': self.numero,
+            'complemento': self.complemento,
+            'bairro': self.bairro,
+            'cidade': self.cidade,
+            'cep': self.cep,
+            'referencia': self.referencia,
+            'principal': self.principal
+        }
