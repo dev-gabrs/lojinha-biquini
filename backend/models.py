@@ -111,16 +111,42 @@ class Order(db.Model):
     status = db.Column(db.String(30), nullable=False, default='pendente')
     total = db.Column(db.Numeric(10, 2), nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+    tipo_entrega = db.Column(db.String(20), nullable=False, default='retirada')
+    telefone = db.Column(db.String(20))
 
+    # endereço copiado no momento da compra (não muda se a cliente editar depois)
+    entrega_rua = db.Column(db.String(150))
+    entrega_numero = db.Column(db.String(20))
+    entrega_complemento = db.Column(db.String(100))
+    entrega_bairro = db.Column(db.String(100))
+    entrega_cidade = db.Column(db.String(100))
+    entrega_cep = db.Column(db.String(10))
+    entrega_referencia = db.Column(db.String(200))
+    
     items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan')
     user = db.relationship('User')
 
     def to_dict(self):
+        endereco = None
+        if self.tipo_entrega == 'entrega':
+            endereco = {
+                'rua': self.entrega_rua,
+                'numero': self.entrega_numero,
+                'complemento': self.entrega_complemento,
+                'bairro': self.entrega_bairro,
+                'cidade': self.entrega_cidade,
+                'cep': self.entrega_cep,
+                'referencia': self.entrega_referencia
+            }
+
         return {
             'id': self.id,
             'status': self.status,
             'total': float(self.total),
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'tipo_entrega': self.tipo_entrega,
+            'telefone': self.telefone,
+            'endereco_entrega': endereco,
             'items': [i.to_dict() for i in self.items]
         }
 
