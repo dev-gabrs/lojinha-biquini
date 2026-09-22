@@ -7,7 +7,7 @@ import hashlib
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Order, Payment
-from orders_utils import cancelar_pedido, marcar_como_pago
+from orders_utils import cancelar_pedido, marcar_como_pago, STATUS_ENCERRADO_MP
 
 payments_bp = Blueprint('payments', __name__)
 
@@ -188,7 +188,7 @@ def webhook():
 
     if status_mp == 'processed':
         marcar_como_pago(order)
-    elif status_mp in ('cancelled', 'expired'):
+    elif status_mp in STATUS_ENCERRADO_MP:
         cancelar_pedido(order)
 
     db.session.commit()
@@ -227,7 +227,7 @@ def consultar_pagamento(order_id):
 
     if status_mp == 'processed':
         marcar_como_pago(order)
-    elif status_mp in ('cancelled', 'expired'):
+    elif status_mp in STATUS_ENCERRADO_MP:
         cancelar_pedido(order)
 
     db.session.commit()
