@@ -7,6 +7,7 @@ import hashlib
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Order, Payment
+from orders_utils import cancelar_pedido, marcar_como_pago
 
 payments_bp = Blueprint('payments', __name__)
 
@@ -80,6 +81,14 @@ def criar_pagamento(order_id):
     if order.status != 'pendente':
         return jsonify({'error': 'Este pedido já foi processado'}), 409
 
+    # se já existe uma cobrança pra esse pedido, devolve a mesma
+    existente = Payment.query.filter_by(order_id=order.id).first()
+    if existente and existente.checkout_url:
+        return jsonify({
+            'checkout_url': existente.checkout_url,
+            'order_id': order.id
+        }), 200
+
     # monta os itens no formato que o Mercado Pago espera
     itens = []
     for item in order.items:
@@ -94,6 +103,7 @@ def criar_pagamento(order_id):
         'processing_mode': 'manual',
         'total_amount': f'{float(order.total):.2f}',
         'external_reference': str(order.id),
+        'expiration_time': 'P3D',
         'items': itens,
         'config': {
             'online': {
@@ -176,16 +186,10 @@ def webhook():
     if not order:
         return jsonify({'ok': True}), 200
 
-    pagamento = Payment.query.filter_by(order_id=order.id).first()
-
     if status_mp == 'processed':
-        order.status = 'pago'
-        if pagamento:
-            pagamento.status = 'aprovado'
+        marcar_como_pago(order)
     elif status_mp in ('cancelled', 'expired'):
-        order.status = 'cancelado'
-        if pagamento:
-            pagamento.status = 'cancelado'
+        cancelar_pedido(order)
 
     db.session.commit()
     return jsonify({'ok': True}), 200
@@ -222,11 +226,9 @@ def consultar_pagamento(order_id):
     print('CONSULTA MANUAL - STATUS NO MP:', status_mp)
 
     if status_mp == 'processed':
-        order.status = 'pago'
-        pagamento.status = 'aprovado'
+        marcar_como_pago(order)
     elif status_mp in ('cancelled', 'expired'):
-        order.status = 'cancelado'
-        pagamento.status = 'cancelado'
+        cancelar_pedido(order)
 
     db.session.commit()
 
