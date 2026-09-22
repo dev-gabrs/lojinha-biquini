@@ -3,6 +3,8 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Cart, Order, OrderItem, User, Address
 from routes.addresses import limpar, CAMPOS_OBRIGATORIOS, LIMITE_ENDERECOS
+import os
+from urllib.parse import quote
 
 orders_bp = Blueprint('orders', __name__)
 
@@ -174,3 +176,47 @@ def ver_pedido(order_id):
         return jsonify({'error': 'Acesso negado'}), 403
 
     return jsonify(order.to_dict()), 200
+
+def formatar_reais(valor):
+    """Transforma 244.8 em 'R$ 244,80'."""
+    return 'R$ ' + f'{float(valor):.2f}'.replace('.', ',')
+
+
+@orders_bp.route('/<int:order_id>/whatsapp', methods=['GET'])
+@jwt_required()
+def link_whatsapp(order_id):
+    user_id = int(get_jwt_identity())
+    order = Order.query.get_or_404(order_id)
+
+    if order.user_id != user_id:
+        return jsonify({'error': 'Acesso negado'}), 403
+
+    if order.status != 'pago':
+        return jsonify({'error': 'O link fica disponível depois que o pagamento for confirmado'}), 409
+
+    numero = re.sub(r'\D', '', os.getenv('LOJA_WHATSAPP', ''))
+    if not numero:
+        return jsonify({'error': 'WhatsApp da loja não configurado'}), 503
+
+    # monta a mensagem linha por linha
+    linhas = [f'Oi! Aqui é {order.user.name} e fiz o pedido #{order.id}', '']
+
+    for item in order.items:
+        detalhes = ' / '.join(d for d in (item.size, item.color) if d)
+        linha = f'- {item.quantity}x {item.product_name}'
+        if detalhes:
+            linha += f' ({detalhes})'
+        linhas.append(linha)
+
+    linhas.append('')
+    linhas.append(f'Total: {formatar_reais(order.total)}')
+
+    if order.tipo_entrega == 'entrega':
+        linhas.append(f'Entrega no bairro {order.entrega_bairro}')
+    else:
+        linhas.append('Vou retirar o pedido')
+
+    mensagem = '\n'.join(linhas)
+    link = f'https://wa.me/{numero}?text={quote(mensagem)}'
+
+    return jsonify({'link': link, 'mensagem': mensagem}), 200
