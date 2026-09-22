@@ -10,6 +10,7 @@ from routes.cart import cart_bp
 from routes.orders import orders_bp
 from routes.payments import payments_bp
 from routes.addresses import addresses_bp
+from routes.admin import admin_bp
 
 load_dotenv()
 
@@ -28,6 +29,7 @@ app.register_blueprint(cart_bp, url_prefix='/api/cart')
 app.register_blueprint(orders_bp, url_prefix='/api/orders')
 app.register_blueprint(payments_bp, url_prefix='/api/payments')
 app.register_blueprint(addresses_bp, url_prefix='/api/addresses')
+app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
 with app.app_context():
     db.create_all()

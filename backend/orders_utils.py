@@ -3,6 +3,15 @@ from models import Product, ProductVariation, Payment
 # o Mercado Pago escreve "canceled" (com um L). Deixo "cancelled" também, por segurança.
 STATUS_ENCERRADO_MP = ('canceled', 'cancelled', 'expired')
 
+# para onde cada status pode ir
+STATUS_TRANSITIONS = {
+    'pendente': ('cancelado',),
+    'pago': ('enviado', 'cancelado'),
+    'enviado': ('entregue',),
+    'entregue': (),
+    'cancelado': ()
+}
+
 def devolver_estoque(order):
     """Devolve pro estoque as peças de um pedido."""
     for item in order.items:

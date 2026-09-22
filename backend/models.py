@@ -150,6 +150,15 @@ class Order(db.Model):
             'items': [i.to_dict() for i in self.items]
         }
 
+    def to_admin_dict(self):
+        dados = self.to_dict()
+        dados['cliente'] = {
+            'id': self.user.id,
+            'nome': self.user.name,
+            'email': self.user.email
+        }
+        return dados    
+
 
 class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
