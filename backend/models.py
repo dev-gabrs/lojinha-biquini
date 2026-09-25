@@ -187,7 +187,7 @@ class OrderItem(db.Model):
             'subtotal': self.subtotal()
         }
 
-#Modelo de pagamento
+# Modelo de pagamento
 
 class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -235,3 +235,10 @@ class Address(db.Model):
             'referencia': self.referencia,
             'principal': self.principal
         }
+
+# Limitação de tentativas de logins
+
+class LoginAttempt(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())

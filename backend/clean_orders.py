@@ -7,6 +7,7 @@ import requests
 from app import app
 from models import db, Order, Payment
 from orders_utils import cancelar_pedido, marcar_como_pago, STATUS_ENCERRADO_MP
+from models import db, Order, Payment, LoginAttempt
 
 MP_API = 'https://api.mercadopago.com/v1/orders'
 PRAZO_MINUTOS = int(os.getenv('PRAZO_PAGAMENTO_MINUTOS', '30'))
@@ -102,7 +103,15 @@ def limpar():
 
     db.session.commit()
 
+def clean_login_attempts():
+    """Apaga tentativas de login antigas (mais de 1 dia)."""
+    limite = agora_utc() - timedelta(days=1)
+    apagadas = LoginAttempt.query.filter(LoginAttempt.created_at < limite).delete()
+    db.session.commit()
+    if apagadas:
+        print(f'{apagadas} tentativa(s) de login antiga(s) apagada(s)')
 
 if __name__ == '__main__':
     with app.app_context():
         limpar()
+        clean_login_attempts()
