@@ -25,10 +25,10 @@ def assinatura_valida():
     """Confere se a notificação veio mesmo do Mercado Pago."""
     segredo = os.getenv('MP_WEBHOOK_SECRET')
 
-    # sem segredo configurado, não dá pra validar
+    # sem segredo configurado, nada entra
     if not segredo:
-        print('AVISO: MP_WEBHOOK_SECRET não configurado, validação pulada')
-        return True
+        print('ERRO: MP_WEBHOOK_SECRET não configurado. Webhook recusado.')
+        return False
 
     x_signature = request.headers.get('x-signature')
     x_request_id = request.headers.get('x-request-id')
