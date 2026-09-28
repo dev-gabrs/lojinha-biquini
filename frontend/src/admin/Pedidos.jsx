@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, clearTokens } from '../api';
+import { api } from '../api';
 
 const STATUS = {
   pendente: { texto: 'Aguardando pagamento', cor: '#8A7A95' },
@@ -68,18 +68,8 @@ export default function Pedidos() {
     }
   }
 
-  function sair() {
-    clearTokens();
-    navegar('/admin/login');
-  }
-
   return (
     <div style={estilos.pagina}>
-      <header style={estilos.topo}>
-        <h1 style={estilos.marca}>Biquínis_PF</h1>
-        <button onClick={sair} style={estilos.sair}>Sair</button>
-      </header>
-
       <div style={estilos.conteudo}>
         <h2 style={estilos.titulo}>Pedidos</h2>
 
@@ -167,24 +157,6 @@ export default function Pedidos() {
 }
 
 const estilos = {
-  pagina: { minHeight: '100vh' },
-  topo: {
-    background: '#fff',
-    borderBottom: '1px solid var(--borda)',
-    padding: '16px 24px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  marca: { fontSize: 16 },
-  sair: {
-    background: 'none',
-    border: '1px solid var(--borda)',
-    borderRadius: 8,
-    padding: '7px 14px',
-    fontSize: 12,
-    color: 'var(--cinza)'
-  },
   conteudo: { maxWidth: 820, margin: '0 auto', padding: '28px 20px 60px' },
   titulo: { fontSize: 15, marginBottom: 18 },
   filtros: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 22 },
