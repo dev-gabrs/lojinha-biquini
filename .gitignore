@@ -9,5 +9,9 @@ env/
 *.db
 instance/
 
+# React 
+node_modules/
+dist/
+
 # Editor
 .vscode/

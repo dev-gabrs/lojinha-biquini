@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --lilas: #C47AEE;
+  --lilas-escuro: #6B3FA0;
+  --lilas-claro: #F3E9FA;
+  --fundo: #FBF7FD;
+  --texto: #2E2433;
+  --cinza: #7B7382;
+  --borda: #E4D9EC;
+  --coral: #FF7A59;
+  --verde: #25D366;
+
+  --titulo: 'Poppins', sans-serif;
+  --corpo: 'Inter', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--corpo);
+}
+
+/* títulos imitam a logo: caixa alta e letras espaçadas */
+h1, h2, h3 {
+  font-family: var(--titulo);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin: 0;
+}
+
+button {
+  font-family: var(--titulo);
+  cursor: pointer;
+}
