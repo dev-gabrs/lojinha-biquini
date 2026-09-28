@@ -1,53 +1,93 @@
 const BASE = 'http://127.0.0.1:5000/api';
+const ACCESS_KEY = 'accessToken';
+const REFRESH_KEY = 'refreshToken';
 
-export function getToken() {
-  return localStorage.getItem('token');
+export function getAccessToken() {
+  return localStorage.getItem(ACCESS_KEY);
 }
 
-export function setToken(token) {
-  localStorage.setItem('token', token);
+export function saveTokens({ access, refresh }) {
+  if (access) localStorage.setItem(ACCESS_KEY, access);
+  if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
 }
 
-export function clearToken() {
-  localStorage.removeItem('token');
+export function clearTokens() {
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
 }
 
-async function request(caminho, opcoes = {}) {
-  const headers = { 'Content-Type': 'application/json', ...opcoes.headers };
+// se várias chamadas expirarem juntas, só uma renovação acontece
+let refreshing = null;
 
-  const token = getToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem(REFRESH_KEY);
+  if (!refreshToken) return null;
+
+  if (!refreshing) {
+    refreshing = fetch(`${BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${refreshToken}` }
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!data || !data.access_token) {
+          clearTokens();
+          return null;
+        }
+        localStorage.setItem(ACCESS_KEY, data.access_token);
+        return data.access_token;
+      })
+      .catch(() => {
+        clearTokens();
+        return null;
+      })
+      .finally(() => {
+        refreshing = null;
+      });
   }
 
-  const resposta = await fetch(`${BASE}${caminho}`, { ...opcoes, headers });
+  return refreshing;
+}
 
-  // token expirado ou inválido: limpa e avisa
-  if (resposta.status === 401 && token) {
-    clearToken();
+async function send(path, options, token) {
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return fetch(`${BASE}${path}`, { ...options, headers });
+}
+
+async function request(path, options = {}) {
+  let response = await send(path, options, getAccessToken());
+
+  // token de acesso venceu: renova uma vez e tenta de novo
+  if (response.status === 401 && localStorage.getItem(REFRESH_KEY)) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      response = await send(path, options, newToken);
+    }
   }
 
-  let dados = null;
+  let data = null;
   try {
-    dados = await resposta.json();
+    data = await response.json();
   } catch {
-    dados = null;
+    data = null;
   }
 
-  if (!resposta.ok) {
-    const mensagem = (dados && (dados.error || dados.msg)) || 'Algo deu errado';
-    const erro = new Error(mensagem);
-    erro.status = resposta.status;
-    throw erro;
+  if (!response.ok) {
+    if (response.status === 401) clearTokens();
+    const message = (data && (data.error || data.msg)) || 'Algo deu errado';
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
 
-  return dados;
+  return data;
 }
 
 export const api = {
-  get: (caminho) => request(caminho),
-  post: (caminho, corpo) => request(caminho, { method: 'POST', body: JSON.stringify(corpo || {}) }),
-  put: (caminho, corpo) => request(caminho, { method: 'PUT', body: JSON.stringify(corpo || {}) }),
-  patch: (caminho, corpo) => request(caminho, { method: 'PATCH', body: JSON.stringify(corpo || {}) }),
-  del: (caminho) => request(caminho, { method: 'DELETE' })
+  get: (path) => request(path),
+  post: (path, body) => request(path, { method: 'POST', body: JSON.stringify(body || {}) }),
+  put: (path, body) => request(path, { method: 'PUT', body: JSON.stringify(body || {}) }),
+  patch: (path, body) => request(path, { method: 'PATCH', body: JSON.stringify(body || {}) }),
+  del: (path) => request(path, { method: 'DELETE' })
 };

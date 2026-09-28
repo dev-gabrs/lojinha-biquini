@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, clearToken } from '../api';
+import { api, clearTokens } from '../api';
 
 const STATUS = {
   pendente: { texto: 'Aguardando pagamento', cor: '#8A7A95' },
@@ -69,7 +69,7 @@ export default function Pedidos() {
   }
 
   function sair() {
-    clearToken();
+    clearTokens();
     navegar('/admin/login');
   }
 

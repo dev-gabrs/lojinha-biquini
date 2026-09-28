@@ -11,12 +11,15 @@ from routes.orders import orders_bp
 from routes.payments import payments_bp
 from routes.addresses import addresses_bp
 from routes.admin import admin_bp
+from datetime import timedelta
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///loja.db'
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=30)
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 
 db.init_app(app)
 bcrypt.init_app(app)

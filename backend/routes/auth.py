@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from models import db, User
 from auth_utils import is_blocked, register_failure, clear_attempts, BLOCK_MINUTES
 
@@ -45,5 +45,39 @@ def login():
         return jsonify({'error': 'E-mail ou senha inválidos'}), 401
 
     clear_attempts(email)
-    token = create_access_token(identity=str(user.id))
-    return jsonify({'token': token, 'name': user.name}), 200
+    return jsonify({
+        'access_token': create_access_token(identity=str(user.id)),
+        'refresh_token': create_refresh_token(identity=str(user.id)),
+        'name': user.name,
+        'is_admin': user.is_admin
+    }), 200
+
+@auth_bp.route('/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    """Troca o token de renovação por um token de acesso novo."""
+    user_id = get_jwt_identity()
+
+    # se a conta sumiu desde o login, não renova
+    user = User.query.get(int(user_id))
+    if not user:
+        return jsonify({'error': 'Conta não encontrada'}), 401
+
+    return jsonify({'access_token': create_access_token(identity=user_id)}), 200
+
+
+@auth_bp.route('/me', methods=['GET'])
+@jwt_required()
+def me():
+    """Diz quem está logado. Útil pra tela mostrar o nome e saber se é admin."""
+    user = User.query.get(int(get_jwt_identity()))
+    if not user:
+        return jsonify({'error': 'Conta não encontrada'}), 401
+    return jsonify({'id': user.id, 'name': user.name, 'is_admin': user.is_admin}), 200
+
+
+@auth_bp.route('/logout', methods=['POST'])
+def logout():
+    """Hoje o logout acontece no navegador. A rota existe para o dia
+    em que quisermos invalidar o token do lado do servidor."""
+    return jsonify({'message': 'Até logo'}), 200

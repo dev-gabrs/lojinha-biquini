@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, setToken } from '../api';
+import { api, saveTokens } from '../api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -15,8 +15,8 @@ export default function Login() {
     setCarregando(true);
 
     try {
-      const dados = await api.post('/auth/login', { email, password: senha });
-      setToken(dados.token);
+      const data = await api.post('/auth/login', { email, password: senha });
+      saveTokens({ access: data.access_token, refresh: data.refresh_token });
       navegar('/admin/pedidos');
     } catch (e) {
       setErro(e.message);
