@@ -12,6 +12,7 @@ from routes.payments import payments_bp
 from routes.addresses import addresses_bp
 from routes.admin import admin_bp
 from datetime import timedelta
+from routes.uploads import uploads_bp
 
 load_dotenv()
 
@@ -33,6 +34,7 @@ app.register_blueprint(orders_bp, url_prefix='/api/orders')
 app.register_blueprint(payments_bp, url_prefix='/api/payments')
 app.register_blueprint(addresses_bp, url_prefix='/api/addresses')
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
+app.register_blueprint(uploads_bp, url_prefix='/api/uploads')
 
 with app.app_context():
     db.create_all()

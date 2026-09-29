@@ -50,7 +50,13 @@ async function refreshAccessToken() {
 }
 
 async function send(path, options, token) {
-  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  const headers = { ...options.headers };
+
+  // o arquivo vai em outro formato; o navegador monta o cabeçalho sozinho
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   if (token) headers.Authorization = `Bearer ${token}`;
   return fetch(`${BASE}${path}`, { ...options, headers });
 }
@@ -89,5 +95,10 @@ export const api = {
   post: (path, body) => request(path, { method: 'POST', body: JSON.stringify(body || {}) }),
   put: (path, body) => request(path, { method: 'PUT', body: JSON.stringify(body || {}) }),
   patch: (path, body) => request(path, { method: 'PATCH', body: JSON.stringify(body || {}) }),
-  del: (path) => request(path, { method: 'DELETE' })
+  del: (path) => request(path, { method: 'DELETE' }),
+  upload: (path, file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return request(path, { method: 'POST', body: form });
+  }
 };

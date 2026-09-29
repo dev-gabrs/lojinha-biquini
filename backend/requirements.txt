@@ -5,3 +5,4 @@ Flask-JWT-Extended==4.6.0
 Flask-CORS==4.0.0
 python-dotenv==1.0.0
 requests==2.32.3
+cloudinary==1.41.0

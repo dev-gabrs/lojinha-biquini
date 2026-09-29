@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import ImageUpload from './ImageUpload';
 
 function formatPrice(value) {
   return 'R$ ' + Number(value).toFixed(2).replace('.', ',');
@@ -164,12 +165,10 @@ export default function Products() {
           </div>
         </div>
 
-        <label style={styles.label}>Link da foto</label>
-        <input
+        <label style={styles.label}>Foto</label>
+        <ImageUpload
           value={form.imageUrl}
-          onChange={(e) => updateField('imageUrl', e.target.value)}
-          placeholder="https://..."
-          style={styles.input}
+          onChange={(url) => updateField('imageUrl', url)}
         />
 
         <label style={styles.checkbox}>
