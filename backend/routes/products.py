@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
-from models import db, Product, ProductVariation, User
+from models import db, Product, ProductVariation, User, CartItem, OrderItem
 
 products_bp = Blueprint('products', __name__)
 
@@ -144,3 +144,56 @@ def update_variation(product_id, variation_id):
 
     db.session.commit()
     return jsonify(variation.to_dict()), 200
+
+@products_bp.route('/<int:product_id>/variations', methods=['POST'])
+@jwt_required()
+def create_variation(product_id):
+    if not is_admin_user():
+        return jsonify({'error': 'Acesso negado'}), 403
+
+    product = Product.query.get_or_404(product_id)
+    data = request.get_json(silent=True) or {}
+
+    size = (data.get('size') or '').strip()
+    color = (data.get('color') or '').strip()
+    if not size and not color:
+        return jsonify({'error': 'Informe ao menos tamanho ou cor'}), 400
+
+    stock = data.get('stock', 0)
+    if not isinstance(stock, int) or isinstance(stock, bool) or stock < 0:
+        return jsonify({'error': 'Estoque inválido'}), 400
+
+    # a partir da primeira variação, o estoque passa a ser controlado por ela
+    if not product.variations:
+        product.stock = None
+
+    variation = ProductVariation(
+        product_id=product.id,
+        size=size or None,
+        color=color or None,
+        stock=stock
+    )
+    db.session.add(variation)
+    db.session.commit()
+    return jsonify(variation.to_dict()), 201
+
+
+@products_bp.route('/<int:product_id>/variations/<int:variation_id>', methods=['DELETE'])
+@jwt_required()
+def delete_variation(product_id, variation_id):
+    if not is_admin_user():
+        return jsonify({'error': 'Acesso negado'}), 403
+
+    variation = ProductVariation.query.get_or_404(variation_id)
+    if variation.product_id != product_id:
+        return jsonify({'error': 'Variação não pertence a este produto'}), 400
+
+    # carrinhos em aberto perdem o item, já que a opção deixou de existir
+    CartItem.query.filter_by(variation_id=variation.id).delete()
+
+    # pedidos guardam tamanho, cor e preço próprios: só soltamos a referência
+    OrderItem.query.filter_by(variation_id=variation.id).update({'variation_id': None})
+
+    db.session.delete(variation)
+    db.session.commit()
+    return jsonify({'message': 'Variação removida'}), 200

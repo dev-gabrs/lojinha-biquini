@@ -250,48 +250,121 @@ export default function Products() {
 
 function ProductRow({ product, onChange }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState({
-    name: product.name,
-    price: String(product.price).replace('.', ','),
-    stock: product.stock ?? '',
-    variations: product.variations.map((item) => ({ id: item.id, stock: item.stock }))
-  });
+  const [draft, setDraft] = useState(null);
+  const [removedIds, setRemovedIds] = useState([]);
   const [busy, setBusy] = useState(false);
   const [rowError, setRowError] = useState('');
+  const navigate = useNavigate();
 
   const totalStock = product.variations.length > 0
     ? product.variations.reduce((sum, item) => sum + item.stock, 0)
     : product.stock ?? 0;
 
+  function startEditing() {
+    setDraft({
+      name: product.name,
+      description: product.description || '',
+      price: String(product.price).replace('.', ','),
+      category: product.category || '',
+      imageUrl: product.image_url || '',
+      stock: product.stock ?? '',
+      variations: product.variations.map((item) => ({
+        id: item.id,
+        size: item.size || '',
+        color: item.color || '',
+        stock: String(item.stock)
+      }))
+    });
+    setRemovedIds([]);
+    setRowError('');
+    setEditing(true);
+  }
+
+  function cancelEditing() {
+    setEditing(false);
+    setDraft(null);
+    setRemovedIds([]);
+    setRowError('');
+  }
+
+  function updateDraft(field, value) {
+    setDraft({ ...draft, [field]: value });
+  }
+
+  function updateVariation(index, field, value) {
+    const next = draft.variations.map((item, i) =>
+      i === index ? { ...item, [field]: value } : item
+    );
+    setDraft({ ...draft, variations: next });
+  }
+
+  function addVariation() {
+    setDraft({
+      ...draft,
+      variations: [...draft.variations, { id: null, size: '', color: '', stock: '' }]
+    });
+  }
+
+  function removeVariation(index) {
+    const item = draft.variations[index];
+    // só precisa avisar o servidor se a variação já existia lá
+    if (item.id) setRemovedIds([...removedIds, item.id]);
+    setDraft({ ...draft, variations: draft.variations.filter((_, i) => i !== index) });
+  }
+
   async function save() {
     setRowError('');
+
     const price = Number(String(draft.price).replace(',', '.'));
     if (!draft.name.trim() || !price || price <= 0) {
       setRowError('Nome e preço são obrigatórios.');
       return;
     }
 
+    const invalid = draft.variations.some((item) => !item.size.trim() && !item.color.trim());
+    if (invalid) {
+      setRowError('Cada variação precisa de tamanho ou cor.');
+      return;
+    }
+
     setBusy(true);
     try {
-      const payload = { name: draft.name.trim(), price };
-      if (product.variations.length === 0) {
+      // 1. remove o que saiu
+      for (const id of removedIds) {
+        await api.del(`/products/${product.id}/variations/${id}`);
+      }
+
+      // 2. atualiza as que ficaram e cria as novas
+      for (const item of draft.variations) {
+        const body = {
+          size: item.size.trim(),
+          color: item.color.trim(),
+          stock: Number(item.stock) || 0
+        };
+        if (item.id) {
+          await api.patch(`/products/${product.id}/variations/${item.id}`, body);
+        } else {
+          await api.post(`/products/${product.id}/variations`, body);
+        }
+      }
+
+      // 3. por último o produto, que define o estoque quando não há variações
+      const payload = {
+        name: draft.name.trim(),
+        description: draft.description.trim(),
+        price,
+        category: draft.category.trim(),
+        image_url: draft.imageUrl.trim()
+      };
+      if (draft.variations.length === 0) {
         payload.stock = Number(draft.stock) || 0;
       }
       await api.put(`/products/${product.id}`, payload);
 
-      // cada variação tem sua própria rota
-      for (const item of draft.variations) {
-        const original = product.variations.find((v) => v.id === item.id);
-        if (original && original.stock !== Number(item.stock)) {
-          await api.patch(`/products/${product.id}/variations/${item.id}`, {
-            stock: Number(item.stock) || 0
-          });
-        }
-      }
-
-      setEditing(false);
+      cancelEditing();
       await onChange();
     } catch (e) {
+      if (e.status === 401) return navigate('/admin/login');
       setRowError(e.message);
     } finally {
       setBusy(false);
@@ -305,6 +378,7 @@ function ProductRow({ product, onChange }) {
       await api.put(`/products/${product.id}`, { active: !product.active });
       await onChange();
     } catch (e) {
+      if (e.status === 401) return navigate('/admin/login');
       setRowError(e.message);
     } finally {
       setBusy(false);
@@ -313,68 +387,109 @@ function ProductRow({ product, onChange }) {
 
   if (editing) {
     return (
-      <div style={styles.listItem}>
-        <div style={{ flex: 1 }}>
-          <input
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            style={{ ...styles.input, marginBottom: 10, width: '100%' }}
-          />
+      <div style={styles.editCard}>
+        <label style={styles.label}>Nome</label>
+        <input
+          value={draft.name}
+          onChange={(e) => updateDraft('name', e.target.value)}
+          style={styles.input}
+        />
 
-          <div style={styles.row}>
-            <div style={styles.half}>
-              <label style={styles.label}>Preço</label>
-              <input
-                value={draft.price}
-                onChange={(e) => setDraft({ ...draft, price: e.target.value })}
-                style={styles.input}
-              />
-            </div>
+        <label style={styles.label}>Descrição</label>
+        <textarea
+          value={draft.description}
+          onChange={(e) => updateDraft('description', e.target.value)}
+          rows={3}
+          style={{ ...styles.input, resize: 'vertical' }}
+        />
 
-            {product.variations.length === 0 && (
-              <div style={styles.half}>
-                <label style={styles.label}>Estoque</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={draft.stock}
-                  onChange={(e) => setDraft({ ...draft, stock: e.target.value })}
-                  style={styles.input}
-                />
-              </div>
-            )}
+        <div style={styles.row}>
+          <div style={styles.half}>
+            <label style={styles.label}>Preço</label>
+            <input
+              value={draft.price}
+              onChange={(e) => updateDraft('price', e.target.value)}
+              style={styles.input}
+            />
           </div>
+          <div style={styles.half}>
+            <label style={styles.label}>Categoria</label>
+            <input
+              value={draft.category}
+              onChange={(e) => updateDraft('category', e.target.value)}
+              style={styles.input}
+            />
+          </div>
+        </div>
 
-          {product.variations.map((item, index) => (
-            <div key={item.id} style={styles.variationRow}>
-              <span style={styles.variationLabel}>
-                {[item.size, item.color].filter(Boolean).join(' / ') || 'Variação'}
-              </span>
+        <label style={styles.label}>Foto</label>
+        <ImageUpload
+          value={draft.imageUrl}
+          onChange={(url) => updateDraft('imageUrl', url)}
+        />
+
+        {draft.variations.length === 0 && (
+          <>
+            <label style={styles.label}>Quantidade em estoque</label>
+            <input
+              type="number"
+              min="0"
+              value={draft.stock}
+              onChange={(e) => updateDraft('stock', e.target.value)}
+              style={styles.input}
+            />
+          </>
+        )}
+
+        <label style={styles.label}>Tamanhos e cores</label>
+        <div style={styles.variations}>
+          {draft.variations.map((item, index) => (
+            <div key={item.id ?? `novo-${index}`} style={styles.variationRow}>
+              <input
+                value={item.size}
+                onChange={(e) => updateVariation(index, 'size', e.target.value)}
+                placeholder="Tamanho"
+                style={{ ...styles.input, marginBottom: 0 }}
+              />
+              <input
+                value={item.color}
+                onChange={(e) => updateVariation(index, 'color', e.target.value)}
+                placeholder="Cor"
+                style={{ ...styles.input, marginBottom: 0 }}
+              />
               <input
                 type="number"
                 min="0"
-                value={draft.variations[index].stock}
-                onChange={(e) => {
-                  const next = draft.variations.map((v, i) =>
-                    i === index ? { ...v, stock: e.target.value } : v
-                  );
-                  setDraft({ ...draft, variations: next });
-                }}
-                style={{ ...styles.input, marginBottom: 0, width: 90 }}
+                value={item.stock}
+                onChange={(e) => updateVariation(index, 'stock', e.target.value)}
+                placeholder="Qtd"
+                style={{ ...styles.input, marginBottom: 0, width: 80 }}
               />
+              <button type="button" onClick={() => removeVariation(index)} style={styles.removeButton}>
+                ✕
+              </button>
             </div>
           ))}
+          <button type="button" onClick={addVariation} style={styles.addButton}>
+            + Adicionar variação
+          </button>
+        </div>
 
-          {rowError && <p style={styles.error}>{rowError}</p>}
+        {removedIds.length > 0 && (
+          <p style={styles.warning}>
+            Variações removidas saem também dos carrinhos abertos das clientes.
+          </p>
+        )}
 
-          <div style={styles.actions}>
-            <button onClick={save} disabled={busy} style={styles.saveButton}>
-              {busy ? 'Salvando...' : 'Salvar'}
-            </button>
-            <button onClick={() => setEditing(false)} style={styles.cancelButton}>
-              Cancelar
-            </button>
-          </div>
+        {rowError && <p style={styles.error}>{rowError}</p>}
+
+        <div style={styles.actions}>
+          <button onClick={save} disabled={busy} style={styles.saveButton}>
+            {busy ? 'Salvando...' : 'Salvar'}
+          </button>
+          <button onClick={cancelEditing} disabled={busy} style={styles.cancelButton}>
+            Cancelar
+          </button>
         </div>
       </div>
     );
@@ -382,22 +497,27 @@ function ProductRow({ product, onChange }) {
 
   return (
     <div style={{ ...styles.listItem, opacity: product.active ? 1 : 0.55 }}>
-      <div>
-        <strong>{product.name}</strong>
-        {!product.active && <span style={styles.inactive}>fora da vitrine</span>}
-        <div style={styles.itemDetail}>
-          {formatPrice(product.price)}
-          {product.category && ` · ${product.category}`}
-          {product.variations.length > 0 && ` · ${product.variations.length} variações`}
+      <div style={styles.itemInfo}>
+        {product.image_url && (
+          <img src={product.image_url} alt="" style={styles.thumb} />
+        )}
+        <div>
+          <strong>{product.name}</strong>
+          {!product.active && <span style={styles.inactive}>fora da vitrine</span>}
+          <div style={styles.itemDetail}>
+            {formatPrice(product.price)}
+            {product.category && ` · ${product.category}`}
+            {product.variations.length > 0 && ` · ${product.variations.length} variações`}
+          </div>
+          {rowError && <p style={styles.error}>{rowError}</p>}
         </div>
-        {rowError && <p style={styles.error}>{rowError}</p>}
       </div>
 
       <div style={styles.rowActions}>
         <span style={{ ...styles.stock, color: totalStock <= 3 ? 'var(--coral)' : 'var(--cinza)' }}>
           {totalStock} em estoque
         </span>
-        <button onClick={() => setEditing(true)} style={styles.smallButton}>Editar</button>
+        <button onClick={startEditing} style={styles.smallButton}>Editar</button>
         <button onClick={toggleActive} disabled={busy} style={styles.smallButton}>
           {product.active ? 'Tirar da vitrine' : 'Voltar à vitrine'}
         </button>
@@ -530,5 +650,29 @@ const styles = {
     border: '1px solid var(--coral)',
     borderRadius: 20,
     padding: '2px 8px'
+  },
+    editCard: {
+    background: '#fff',
+    border: '1px solid var(--lilas-escuro)',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 10,
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  itemInfo: { display: 'flex', alignItems: 'center', gap: 12 },
+  thumb: {
+    width: 44,
+    height: 54,
+    objectFit: 'cover',
+    borderRadius: 6,
+    border: '1px solid var(--borda)'
+  },
+  warning: {
+    background: '#FFF7E8',
+    color: '#8A6100',
+    fontSize: 13,
+    padding: '10px 12px',
+    borderRadius: 8
   }
 };
