@@ -29,7 +29,7 @@ export default function Products() {
   async function loadProducts() {
     setLoading(true);
     try {
-      setProducts(await api.get('/products'));
+      setProducts(await api.get('/products?all=1'));
     } catch (e) {
       if (e.status === 401) return navigate('/admin/login');
       setError(e.message);
@@ -242,24 +242,167 @@ export default function Products() {
       {loading && <p style={styles.muted}>Carregando...</p>}
       {!loading && products.length === 0 && <p style={styles.muted}>Nenhum produto ainda.</p>}
 
-      {products.map((product) => {
-        const stock = totalStock(product);
-        return (
-          <div key={product.id} style={styles.listItem}>
-            <div>
-              <strong>{product.name}</strong>
-              <div style={styles.itemDetail}>
-                {formatPrice(product.price)}
-                {product.category && ` · ${product.category}`}
-                {product.variations.length > 0 && ` · ${product.variations.length} variações`}
-              </div>
+      {products.map((product) => (
+        <ProductRow key={product.id} product={product} onChange={loadProducts} />
+      ))}
+    </div>
+  );
+}
+
+function ProductRow({ product, onChange }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({
+    name: product.name,
+    price: String(product.price).replace('.', ','),
+    stock: product.stock ?? '',
+    variations: product.variations.map((item) => ({ id: item.id, stock: item.stock }))
+  });
+  const [busy, setBusy] = useState(false);
+  const [rowError, setRowError] = useState('');
+
+  const totalStock = product.variations.length > 0
+    ? product.variations.reduce((sum, item) => sum + item.stock, 0)
+    : product.stock ?? 0;
+
+  async function save() {
+    setRowError('');
+    const price = Number(String(draft.price).replace(',', '.'));
+    if (!draft.name.trim() || !price || price <= 0) {
+      setRowError('Nome e preço são obrigatórios.');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const payload = { name: draft.name.trim(), price };
+      if (product.variations.length === 0) {
+        payload.stock = Number(draft.stock) || 0;
+      }
+      await api.put(`/products/${product.id}`, payload);
+
+      // cada variação tem sua própria rota
+      for (const item of draft.variations) {
+        const original = product.variations.find((v) => v.id === item.id);
+        if (original && original.stock !== Number(item.stock)) {
+          await api.patch(`/products/${product.id}/variations/${item.id}`, {
+            stock: Number(item.stock) || 0
+          });
+        }
+      }
+
+      setEditing(false);
+      await onChange();
+    } catch (e) {
+      setRowError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleActive() {
+    setBusy(true);
+    setRowError('');
+    try {
+      await api.put(`/products/${product.id}`, { active: !product.active });
+      await onChange();
+    } catch (e) {
+      setRowError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div style={styles.listItem}>
+        <div style={{ flex: 1 }}>
+          <input
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            style={{ ...styles.input, marginBottom: 10, width: '100%' }}
+          />
+
+          <div style={styles.row}>
+            <div style={styles.half}>
+              <label style={styles.label}>Preço</label>
+              <input
+                value={draft.price}
+                onChange={(e) => setDraft({ ...draft, price: e.target.value })}
+                style={styles.input}
+              />
             </div>
-            <span style={{ ...styles.stock, color: stock <= 3 ? 'var(--coral)' : 'var(--cinza)' }}>
-              {stock} em estoque
-            </span>
+
+            {product.variations.length === 0 && (
+              <div style={styles.half}>
+                <label style={styles.label}>Estoque</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={draft.stock}
+                  onChange={(e) => setDraft({ ...draft, stock: e.target.value })}
+                  style={styles.input}
+                />
+              </div>
+            )}
           </div>
-        );
-      })}
+
+          {product.variations.map((item, index) => (
+            <div key={item.id} style={styles.variationRow}>
+              <span style={styles.variationLabel}>
+                {[item.size, item.color].filter(Boolean).join(' / ') || 'Variação'}
+              </span>
+              <input
+                type="number"
+                min="0"
+                value={draft.variations[index].stock}
+                onChange={(e) => {
+                  const next = draft.variations.map((v, i) =>
+                    i === index ? { ...v, stock: e.target.value } : v
+                  );
+                  setDraft({ ...draft, variations: next });
+                }}
+                style={{ ...styles.input, marginBottom: 0, width: 90 }}
+              />
+            </div>
+          ))}
+
+          {rowError && <p style={styles.error}>{rowError}</p>}
+
+          <div style={styles.actions}>
+            <button onClick={save} disabled={busy} style={styles.saveButton}>
+              {busy ? 'Salvando...' : 'Salvar'}
+            </button>
+            <button onClick={() => setEditing(false)} style={styles.cancelButton}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ ...styles.listItem, opacity: product.active ? 1 : 0.55 }}>
+      <div>
+        <strong>{product.name}</strong>
+        {!product.active && <span style={styles.inactive}>fora da vitrine</span>}
+        <div style={styles.itemDetail}>
+          {formatPrice(product.price)}
+          {product.category && ` · ${product.category}`}
+          {product.variations.length > 0 && ` · ${product.variations.length} variações`}
+        </div>
+        {rowError && <p style={styles.error}>{rowError}</p>}
+      </div>
+
+      <div style={styles.rowActions}>
+        <span style={{ ...styles.stock, color: totalStock <= 3 ? 'var(--coral)' : 'var(--cinza)' }}>
+          {totalStock} em estoque
+        </span>
+        <button onClick={() => setEditing(true)} style={styles.smallButton}>Editar</button>
+        <button onClick={toggleActive} disabled={busy} style={styles.smallButton}>
+          {product.active ? 'Tirar da vitrine' : 'Voltar à vitrine'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -349,5 +492,44 @@ const styles = {
     gap: 12
   },
   itemDetail: { fontSize: 13, color: 'var(--cinza)', marginTop: 3 },
-  stock: { fontSize: 13, whiteSpace: 'nowrap' }
+  stock: { fontSize: 13, whiteSpace: 'nowrap' },
+
+  actions: { display: 'flex', gap: 8, marginTop: 14 },
+  saveButton: {
+    background: 'var(--lilas-escuro)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    padding: '10px 18px',
+    fontSize: 12,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase'
+  },
+  cancelButton: {
+    background: 'none',
+    border: '1px solid var(--borda)',
+    borderRadius: 8,
+    padding: '10px 18px',
+    fontSize: 12,
+    color: 'var(--cinza)'
+  },
+  rowActions: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  smallButton: {
+    background: 'none',
+    border: '1px solid var(--borda)',
+    borderRadius: 8,
+    padding: '7px 12px',
+    fontSize: 12,
+    color: 'var(--cinza)',
+    whiteSpace: 'nowrap'
+  },
+  variationLabel: { fontSize: 13, color: 'var(--cinza)', minWidth: 90 },
+  inactive: {
+    fontSize: 11,
+    color: 'var(--coral)',
+    marginLeft: 8,
+    border: '1px solid var(--coral)',
+    borderRadius: 20,
+    padding: '2px 8px'
+  }
 };
