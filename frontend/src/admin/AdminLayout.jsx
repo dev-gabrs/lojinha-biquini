@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { clearTokens } from '../api';
+import { useAuth } from '../auth/AuthContext';
 
 const LINKS = [
   { to: '/admin/pedidos', label: 'Pedidos' },
@@ -8,10 +8,11 @@ const LINKS = [
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   function handleLogout() {
-    clearTokens();
-    navigate('/admin/login');
+    signOut();
+    navigate('/entrar');
   }
 
   return (

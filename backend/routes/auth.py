@@ -11,6 +11,12 @@ def register():
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
     name = data.get('name', '').strip()
+    
+    if not name or len(name) < 2:
+        return jsonify({'error': 'Informe seu nome'}), 400
+
+    if not email or not password or len(password) < 8:
+        return jsonify({'error': 'Dados inválidos'}), 400
 
     if not email or not password or len(password) < 8:
         return jsonify({'error': 'Dados inválidos'}), 400
@@ -22,6 +28,13 @@ def register():
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
+
+    # já entra logada depois de se cadastrar
+    return jsonify({
+        'access_token': create_access_token(identity=str(user.id)),
+        'refresh_token': create_refresh_token(identity=str(user.id)),
+        'user': {'id': user.id, 'name': user.name, 'is_admin': user.is_admin}
+    }), 201
 
     return jsonify({'message': 'Cadastrado com sucesso'}), 201
 
@@ -48,8 +61,7 @@ def login():
     return jsonify({
         'access_token': create_access_token(identity=str(user.id)),
         'refresh_token': create_refresh_token(identity=str(user.id)),
-        'name': user.name,
-        'is_admin': user.is_admin
+        'user': {'id': user.id, 'name': user.name, 'is_admin': user.is_admin}
     }), 200
 
 @auth_bp.route('/refresh', methods=['POST'])
