@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from models import db, Product, ProductVariation, User, CartItem, OrderItem
+import math
+import unicodedata
 
 products_bp = Blueprint('products', __name__)
 
@@ -23,20 +25,66 @@ def is_admin_request():
     user = User.query.get(int(identity))
     return user is not None and user.is_admin
 
+PER_PAGE_DEFAULT = 24
+PER_PAGE_MAX = 60
+
+
+def normalize(text):
+    """Minúsculo e sem acento, para 'biquini' encontrar 'Biquíni'."""
+    if not text:
+        return ''
+    decomposed = unicodedata.normalize('NFKD', text)
+    return ''.join(c for c in decomposed if not unicodedata.combining(c)).lower()
+
 # Pública — qualquer cliente vê os produtos
 @products_bp.route('', methods=['GET'])
 def list_products():
     query = Product.query
 
-    # só admin logado pode ver os produtos fora da vitrine
-    if request.args.get('all') == '1' and is_admin_request():
-        pass
-    else:
+    # só admin autenticado vê o que está fora da vitrine
+    if not (request.args.get('all') == '1' and is_admin_request()):
         query = query.filter_by(active=True)
 
-    products = query.order_by(Product.id.desc()).all()
-    return jsonify([p.to_dict() for p in products]), 200
+    category = (request.args.get('categoria') or '').strip()
+    if category:
+        query = query.filter(Product.category == category)
 
+    query = query.order_by(Product.id.desc())
+
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+        per_page = int(request.args.get('per_page', PER_PAGE_DEFAULT))
+    except ValueError:
+        return jsonify({'error': 'Paginação inválida'}), 400
+    per_page = min(max(1, per_page), PER_PAGE_MAX)
+
+    search = normalize(request.args.get('busca', ''))
+
+    if search:
+        # a busca ignora acento, então o filtro acontece em Python
+        found = [p for p in query.all() if search in normalize(p.name)]
+        total = len(found)
+        start = (page - 1) * per_page
+        items = found[start:start + per_page]
+    else:
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        items = pagination.items
+        total = pagination.total
+
+    return jsonify({
+        'produtos': [p.to_dict() for p in items],
+        'pagina': page,
+        'total_paginas': max(1, math.ceil(total / per_page)),
+        'total': total
+    }), 200
+@products_bp.route('/categories', methods=['GET'])
+def list_categories():
+    rows = db.session.query(Product.category).filter(
+        Product.active.is_(True),
+        Product.category.isnot(None),
+        Product.category != ''
+    ).distinct().all()
+    return jsonify(sorted(row[0] for row in rows)), 200
 
 @products_bp.route('/<int:product_id>', methods=['GET'])
 def get_product(product_id):
