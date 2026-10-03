@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import ImageUpload from './ImageUpload';
@@ -27,19 +27,31 @@ export default function Products() {
   const [notice, setNotice] = useState('');
   const navigate = useNavigate();
 
-  async function loadProducts() {
+  const [adminSearch, setAdminSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+
+  const loadProducts = useCallback(async (pageToLoad = 1, replace = true) => {
     setLoading(true);
     try {
-      setProducts(await api.get('/products?all=1'));
+      const query = new URLSearchParams({ all: '1', page: String(pageToLoad), per_page: '40' });
+      if (adminSearch.trim()) query.set('busca', adminSearch.trim());
+
+      const data = await api.get(`/products?${query}`);
+      setProducts((current) => (replace ? data.produtos : [...current, ...data.produtos]));
+      setPage(data.pagina);
+      setTotalPages(data.total_paginas);
+      setTotal(data.total);
     } catch (e) {
-      if (e.status === 401) return navigate('/admin/login');
+      if (e.status === 401) return navigate('/entrar');
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }
+  }, [adminSearch, navigate]);
 
-  useEffect(() => { loadProducts(); }, []);
+  useEffect(() => { loadProducts(1, true); }, [loadProducts]);
 
   function updateField(field, value) {
     setForm({ ...form, [field]: value });
@@ -236,14 +248,29 @@ export default function Products() {
         </button>
       </form>
 
-      <h2 style={{ ...styles.heading, marginTop: 40 }}>Produtos cadastrados</h2>
+      <h2 style={{ ...styles.heading, marginTop: 40 }}>
+        Produtos cadastrados {total > 0 && `(${total})`}
+      </h2>
+
+      <input
+        value={adminSearch}
+        onChange={(e) => setAdminSearch(e.target.value)}
+        placeholder="Buscar por nome"
+        style={{ ...styles.input, marginBottom: 14, width: '100%' }}
+      />
 
       {loading && <p style={styles.muted}>Carregando...</p>}
-      {!loading && products.length === 0 && <p style={styles.muted}>Nenhum produto ainda.</p>}
+      {!loading && products.length === 0 && <p style={styles.muted}>Nenhum produto encontrado.</p>}
 
       {products.map((product) => (
         <ProductRow key={product.id} product={product} onChange={loadProducts} />
       ))}
+
+      {!loading && page < totalPages && (
+        <button onClick={() => loadProducts(page + 1, false)} style={styles.addButton}>
+          Carregar mais
+        </button>
+      )}
     </div>
   );
 }
