@@ -89,6 +89,11 @@ def list_categories():
 @products_bp.route('/<int:product_id>', methods=['GET'])
 def get_product(product_id):
     product = Product.query.get_or_404(product_id)
+
+    # peça fora da vitrine só aparece para admin
+    if not product.active and not is_admin_request():
+        return jsonify({'error': 'Produto não encontrado'}), 404
+
     return jsonify(product.to_dict()), 200
 
 

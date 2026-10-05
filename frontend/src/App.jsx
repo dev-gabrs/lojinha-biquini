@@ -8,6 +8,7 @@ import StoreLayout from './store/StoreLayout';
 import Home from './store/Home';
 import SignIn from './store/SignIn';
 import SignUp from './store/SignUp';
+import ProductPage from './store/ProductPage';
 
 function Protected({ children, adminOnly }) {
   const { user, loading } = useAuth();
@@ -24,22 +25,23 @@ export default function App() {
     <AuthProvider>
       <CartProvider>
         <BrowserRouter>
-          <Routes>
-            <Route path="/entrar" element={<SignIn />} />
-            <Route path="/cadastro" element={<SignUp />} />
+        <Routes>
+          <Route path="/entrar" element={<SignIn />} />
+          <Route path="/cadastro" element={<SignUp />} />
 
-            <Route path="/" element={<StoreLayout />}>
-              <Route index element={<Home />} />
-            </Route>
+          <Route path="/" element={<StoreLayout />}>
+            <Route index element={<Home />} />
+            <Route path="produto/:id" element={<ProductPage />} />
+          </Route>
 
-            <Route path="/admin" element={<Protected adminOnly><AdminLayout /></Protected>}>
-              <Route path="pedidos" element={<Pedidos />} />
-              <Route path="produtos" element={<Products />} />
-              <Route index element={<Navigate to="pedidos" replace />} />
-            </Route>
+          <Route path="/admin" element={<Protected adminOnly><AdminLayout /></Protected>}>
+            <Route path="pedidos" element={<Pedidos />} />
+            <Route path="produtos" element={<Products />} />
+            <Route index element={<Navigate to="pedidos" replace />} />
+          </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
         </BrowserRouter>
       </CartProvider>
     </AuthProvider>
