@@ -9,6 +9,7 @@ import Home from './store/Home';
 import SignIn from './store/SignIn';
 import SignUp from './store/SignUp';
 import ProductPage from './store/ProductPage';
+import Cart from './store/Cart';
 
 function Protected({ children, adminOnly }) {
   const { user, loading } = useAuth();
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/" element={<StoreLayout />}>
             <Route index element={<Home />} />
             <Route path="produto/:id" element={<ProductPage />} />
+            <Route path="carrinho" element={<Cart />} />
           </Route>
 
           <Route path="/admin" element={<Protected adminOnly><AdminLayout /></Protected>}>

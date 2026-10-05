@@ -95,14 +95,21 @@ class CartItem(db.Model):
         return round(self.unit_price() * self.quantity, 2)
 
     def to_dict(self):
+        if self.variation:
+            available = self.variation.stock
+        else:
+            available = self.product.stock if self.product.stock is not None else 0
+
         return {
             'id': self.id,
             'product_id': self.product_id,
             'product_name': self.product.name,
+            'image_url': self.product.image_url,
             'variation': self.variation.to_dict() if self.variation else None,
             'quantity': self.quantity,
             'unit_price': self.unit_price(),
-            'subtotal': self.subtotal()
+            'subtotal': self.subtotal(),
+            'available_stock': available
         }
 
 class Order(db.Model):
