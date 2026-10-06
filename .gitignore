@@ -6,6 +6,7 @@ env/
 
 # Segredos e banco de dados
 .env
+frontend/.env
 *.db
 instance/
 

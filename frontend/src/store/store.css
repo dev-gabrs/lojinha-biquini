@@ -380,6 +380,66 @@
 .cart-summary__line strong { font-size: 20px; }
 .cart-summary__note { font-size: 12px; color: var(--cinza); line-height: 1.6; margin: 0 0 18px; }
 
+.checkout { display: grid; grid-template-columns: 1fr 320px; gap: 30px; align-items: start; }
+
+.checkout-box {
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.option.is-selected { border-color: var(--lilas-escuro); background: var(--lilas-claro); }
+.option input { margin-top: 3px; accent-color: var(--lilas-escuro); }
+.option span { display: flex; flex-direction: column; gap: 3px; }
+.option strong { font-size: 14px; font-weight: 500; }
+.option small { font-size: 12px; color: var(--cinza); line-height: 1.5; }
+
+.store-input {
+  width: 100%;
+  font-family: var(--corpo);
+  font-size: 14px;
+  padding: 11px 13px;
+  border: 1px solid var(--borda);
+  border-radius: 9px;
+  background: var(--fundo);
+  margin-bottom: 14px;
+  color: var(--texto);
+}
+
+.address-form { margin-top: 14px; }
+.field-row { display: flex; gap: 12px; }
+.small-label { display: block; font-size: 12px; color: var(--cinza); margin-bottom: 5px; }
+.checkbox-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--texto);
+}
+.checkbox-line input { accent-color: var(--lilas-escuro); }
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--borda);
+}
+.summary-item small { color: var(--cinza); }
+
 @media (max-width: 860px) {
   .header__row { padding: 14px 20px; gap: 12px; }
   .search, .shortcut { display: none; }
@@ -420,6 +480,8 @@
   .cart { grid-template-columns: 1fr; gap: 18px; }
   .cart-summary { position: static; }
   .cart-item__photo { width: 68px; }
+  .checkout { grid-template-columns: 1fr; gap: 18px; }
+  .field-row { flex-direction: column; gap: 0; }
  }
 
 .load-more { text-align: center; margin-top: 34px; }

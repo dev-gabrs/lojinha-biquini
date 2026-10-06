@@ -34,6 +34,7 @@ export default function App() {
             <Route index element={<Home />} />
             <Route path="produto/:id" element={<ProductPage />} />
             <Route path="carrinho" element={<Cart />} />
+            <Route path="checkout" element={<Protected><Checkout /></Protected>} />
           </Route>
 
           <Route path="/admin" element={<Protected adminOnly><AdminLayout /></Protected>}>

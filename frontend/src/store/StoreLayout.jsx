@@ -5,7 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useCart } from './CartContext';
 import './store.css';
 
-const WHATSAPP = '5500000000000';
+const WHATSAPP = import.meta.env.VITE_WHATSAPP || '';
 
 function SearchIcon() {
   return (
@@ -166,7 +166,8 @@ export default function StoreLayout() {
           <div>
             <h3>Contato</h3>
             <p>
-              <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer">WhatsApp (00) 00000-0000</a><br/>
+              <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer">WhatsApp</a>
+              <br />
               <a href="https://www.instagram.com/biquinis_pf/" target="_blank" rel="noreferrer">Instagram @biquinis_pf</a>
             </p>
           </div>
