@@ -4,10 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 
-from app import app
-from models import db, Order, Payment
-from orders_utils import cancelar_pedido, marcar_como_pago, STATUS_ENCERRADO_MP
 from models import db, Order, Payment, LoginAttempt
+from orders_utils import cancelar_pedido, marcar_como_pago, STATUS_ENCERRADO_MP
 
 MP_API = 'https://api.mercadopago.com/v1/orders'
 PRAZO_MINUTOS = int(os.getenv('PRAZO_PAGAMENTO_MINUTOS', '30'))
@@ -112,6 +110,10 @@ def clean_login_attempts():
         print(f'{apagadas} tentativa(s) de login antiga(s) apagada(s)')
 
 if __name__ == '__main__':
+    # importado só aqui: o app.py também importa este arquivo,
+    # e importar um ao outro no topo dá erro de importação circular
+    from app import app
+
     with app.app_context():
         limpar()
         clean_login_attempts()

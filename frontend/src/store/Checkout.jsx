@@ -71,7 +71,8 @@ export default function Checkout() {
 
   async function startPayment(orderId) {
     const payment = await api.post(`/payments/criar/${orderId}`);
-    // sai do site e vai para o ambiente do Mercado Pago
+    // o navegador vai sair do site: guardamos o pedido para a tela de retorno
+    localStorage.setItem('pendingOrderId', orderId);
     window.location.href = payment.checkout_url;
   }
 

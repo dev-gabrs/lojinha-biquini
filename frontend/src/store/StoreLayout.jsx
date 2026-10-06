@@ -111,10 +111,13 @@ export default function StoreLayout() {
 
           <div className="header__side header__side--right">
             {user ? (
-              <button onClick={handleSignOut} className="shortcut" style={{ border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}>
-                <span className="shortcut__top">Olá, {user.name.split(' ')[0]}</span>
-                <span className="shortcut__main">Sair</span>
-              </button>
+              <>
+                <Link to="/pedidos" className="shortcut">
+                  <span className="shortcut__top">Olá, {user.name.split(' ')[0]}</span>
+                  <span className="shortcut__main">Meus pedidos</span>
+                </Link>
+                <button onClick={handleSignOut} className="link-button">Sair</button>
+              </>
             ) : (
               <Link to="/entrar" className="shortcut">
                 <span className="shortcut__top">Minha conta</span>
@@ -153,6 +156,13 @@ export default function StoreLayout() {
                 {category}
               </Link>
             ))}
+
+            {/* atalho que só aparece no celular, onde o cabeçalho esconde os links */}
+            {user && (
+              <NavLink to="/pedidos" className="nav__account" onClick={() => setMenuOpen(false)}>
+                Meus pedidos
+              </NavLink>
+            )}
           </div>
         </nav>
       </header>

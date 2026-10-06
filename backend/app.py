@@ -39,5 +39,40 @@ app.register_blueprint(uploads_bp, url_prefix='/api/uploads')
 with app.app_context():
     db.create_all()
 
+
+# De quanto em quanto tempo a faxina de pedidos roda
+FAXINA_MINUTOS = int(os.getenv('FAXINA_MINUTOS', '10'))
+
+
+def start_cleanup_job():
+    """Liga a faxina automática de pedidos pendentes.
+
+    Sem isso, um pedido que ninguém pagou fica pendente para sempre
+    segurando estoque que deveria estar à venda.
+    """
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from clean_orders import limpar, clean_login_attempts
+
+    def run_cleanup():
+        with app.app_context():
+            try:
+                limpar()
+                clean_login_attempts()
+            except Exception as erro:
+                # a faxina nunca pode derrubar o servidor
+                print('Erro na faxina:', erro)
+
+    scheduler = BackgroundScheduler(daemon=True)
+    scheduler.add_job(run_cleanup, 'interval', minutes=FAXINA_MINUTOS)
+    scheduler.start()
+    print(f'Faxina automática ligada: a cada {FAXINA_MINUTOS} minuto(s)')
+
+
 if __name__ == '__main__':
-    app.run(debug=True) 
+    # O modo debug reinicia o Flask sozinho quando um arquivo muda.
+    # Essa variável só existe no processo que realmente atende,
+    # então a faxina não liga duas vezes.
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        start_cleanup_job()
+
+    app.run(debug=True)

@@ -113,6 +113,8 @@
   text-decoration: none;
 }
 .nav a.is-active { color: var(--lilas-escuro); }
+/* no desktop esse atalho já existe no cabeçalho */
+.nav__account { display: none; }
 
 .page { max-width: 1200px; margin: 0 auto; padding: 40px 24px 70px; }
 .section-title { text-align: center; font-size: 16px; margin-bottom: 26px; }
@@ -466,6 +468,7 @@
   .nav { display: none; }
   .nav.is-open { display: block; }
   .nav__inner { flex-direction: column; align-items: flex-start; gap: 14px; padding: 14px 20px; }
+  .nav__account { display: block; color: var(--lilas-escuro); }
   .page { padding: 24px 20px 60px; }
   .product-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .card { padding: 10px; }
@@ -497,3 +500,83 @@
   text-transform: uppercase;
   margin-bottom: 10px;
 }
+
+/* Tela de retorno do pagamento */
+.payment-return {
+  max-width: 520px;
+  margin: 48px auto;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.payment-return h1 {
+  font-family: var(--titulo);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.payment-return p { font-size: 14px; line-height: 1.7; color: var(--cinza); }
+.payment-return .confirmed { color: var(--verde); font-weight: 500; }
+
+.payment-return-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+/* Meus pedidos */
+.orders-list { display: flex; flex-direction: column; gap: 14px; }
+
+.order-card {
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  padding: 18px;
+}
+.order-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.order-card__head strong { font-size: 15px; font-weight: 500; display: block; }
+.order-card__head small { font-size: 12px; display: block; margin-top: 3px; }
+
+.order-tag {
+  font-family: var(--titulo);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  background: var(--lilas-claro);
+  color: var(--lilas-escuro);
+}
+.order-tag--pendente { background: #FFF4E2; color: #9A6412; }
+.order-tag--pago { background: #EAF7EF; color: #1E7A43; }
+.order-tag--cancelado { background: #FFF0EC; color: #B8341A; }
+
+.order-card__items { list-style: none; margin: 0 0 14px; padding: 0; }
+.order-card__items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--borda);
+}
+
+.order-card__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+.order-card__foot strong { font-size: 18px; font-weight: 500; }
+.order-card__foot .add-button { width: auto; padding: 12px 22px; }

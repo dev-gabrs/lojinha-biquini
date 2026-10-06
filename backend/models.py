@@ -150,7 +150,7 @@ class Order(db.Model):
             'id': self.id,
             'status': self.status,
             'total': float(self.total),
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': self.created_at.isoformat() + 'Z' if self.created_at else None,
             'tipo_entrega': self.tipo_entrega,
             'telefone': self.telefone,
             'endereco_entrega': endereco,

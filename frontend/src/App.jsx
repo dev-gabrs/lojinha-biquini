@@ -10,6 +10,9 @@ import SignIn from './store/SignIn';
 import SignUp from './store/SignUp';
 import ProductPage from './store/ProductPage';
 import Cart from './store/Cart';
+import Checkout from './store/Checkout';
+import PaymentReturn from './store/PaymentReturn';
+import MyOrders from './store/MyOrders';
 
 function Protected({ children, adminOnly }) {
   const { user, loading } = useAuth();
@@ -35,6 +38,10 @@ export default function App() {
             <Route path="produto/:id" element={<ProductPage />} />
             <Route path="carrinho" element={<Cart />} />
             <Route path="checkout" element={<Protected><Checkout /></Protected>} />
+            <Route path="pagamento/sucesso" element={<PaymentReturn result="success" />} />
+            <Route path="pagamento/erro" element={<PaymentReturn result="failure" />} />
+            <Route path="pagamento/pendente" element={<PaymentReturn result="pending" />} />
+            <Route path="pedidos" element={<Protected><MyOrders /></Protected>} />
           </Route>
 
           <Route path="/admin" element={<Protected adminOnly><AdminLayout /></Protected>}>
